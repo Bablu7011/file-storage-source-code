@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - {{ session['user_email'] }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        function handleCategoryChange(select) {
+            const otherInput = document.getElementById('otherCategoryInput');
+            if (select.value === 'other') {
+                otherInput.style.display = 'block';
+                otherInput.required = true;
+            } else {
+                otherInput.style.display = 'none';
+                otherInput.required = false;
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2>Welcome, {{ session['user_email'] }}!</h2>
+            <a href="{{ url_for('logout') }}" class="button">Logout</a>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <h3>Upload a New Certificate</h3>
+            <form action="{{ url_for('upload_file') }}" method="POST" enctype="multipart/form-data">
+                <label for="category_id">Select Category:</label>
+                <select name="category_id" required onchange="handleCategoryChange(this)">
+                    <option value="">-- Select --</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat._id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                    <option value="other">Other (Specify)</option>
+                </select>
+
+                <input type="text" id="otherCategoryInput" name="other_category" placeholder="Enter custom category">
+                <label for="file">Choose File:</label>
+                <input type="file" name="file" required>
+                <button type="submit">Upload</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Your Uploaded Certificates</h3>
+            {% if user_files %}
+                <table class="file-list">
+                    <thead>
+                        <tr>
+                            <th>File Name</th>
+                            <th>Category</th>
+                            <th>Date Uploaded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file in user_files %}
+                            <tr>
+                                <td>{{ file.filename }}</td>
+                                <td>{{ file.category_name }}</td>
+                                <td>{{ file.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>You have not uploaded any files yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

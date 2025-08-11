@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>UploadFile.com - Secure Cloud Storage</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="landing-container">
+        <header class="landing-header">
+            <h1 class="logo">UploadFile.com</h1>
+            <nav class="nav-links">
+                <a href="{{ url_for('signup') }}" class="button">Get Started</a>
+                <a href="{{ url_for('login') }}" class="login-button">Log In</a>
+            </nav>
+        </header>
+
+        <div class="hero-section">
+            <div class="hero-content">
+                <h2 class="hero-title">Secure cloud storage for all your files</h2>
+                <p class="hero-subtitle">Documents, photos, videos, and more—keep all your files and folders safe in online cloud storage.</p>
+                <div class="cta-buttons">
+                    <a href="{{ url_for('signup') }}" class="cta-button">Get Started for free</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <!-- A simple placeholder for visual effect, similar to the Dropbox page -->
+                <img src="https://placehold.co/400x300/a9a2ff/ffffff?text=Your+Files" alt="Placeholder for user's files">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
