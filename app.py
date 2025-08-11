@@ -179,4 +179,9 @@ def upload_file():
 
     flash("File uploaded successfully!", 'success')
     return redirect(url_for('dashboard'))
-
+    
+    if __name__ == '__main__':
+    # This block is for local development only.
+    # In production, a WSGI server like Gunicorn will manage the app.
+    # app.run(debug=True)
+    pass
