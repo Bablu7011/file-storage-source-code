@@ -1,26 +1,29 @@
 import os
 from datetime import datetime
-from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from pymongo import MongoClient
 import boto3
 from bson.objectid import ObjectId
 from flask_bcrypt import Bcrypt
 
-# Load environment variables
-load_dotenv()
-
+# --- 1. Initialize App and Extensions ---
+# The Flask application instance and its extensions are initialized here.
 app = Flask(__name__)
 app.secret_key = os.urandom(24) # A secret key is required for sessions
 bcrypt = Bcrypt(app)
 
-# Database & S3 Initialization
+# --- 2. Initialize Database and S3 Services ---
+# Connection attempts are made here. If a connection fails, the application will
+# raise an error, causing Gunicorn to fail gracefully, which is the correct behavior.
 try:
     client = MongoClient(os.getenv("MONGO_URI"))
     db = client.cert_storage_db
     print("Connected to MongoDB successfully!")
 except Exception as e:
-    print(f"Error connecting to MongoDB: {e}")
+    # A fatal error if the database connection fails.
+    print(f"FATAL ERROR: Could not connect to MongoDB. Reason: {e}")
+    # In a production environment, this would cause the Gunicorn worker to exit.
+    raise RuntimeError("Failed to connect to MongoDB.") from e
 
 try:
     s3 = boto3.client(
@@ -32,27 +35,45 @@ try:
     S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
     print("Connected to AWS S3 successfully!")
 except Exception as e:
-    print(f"Error connecting to AWS S3: {e}")
+    # A fatal error if the S3 connection fails.
+    print(f"FATAL ERROR: Could not connect to AWS S3. Reason: {e}")
+    raise RuntimeError("Failed to connect to AWS S3.") from e
 
+# --- 3. Function to create default categories ---
 def _create_default_categories():
-    """Ensures that predefined categories exist in the database."""
+    """
+    Ensures that predefined categories exist in the database.
+    This function is run within an application context on startup.
+    """
     default_categories = ["Education", "Job", "Training", "Certification", "License", "Workshop"]
-    for cat_name in default_categories:
-        if db.categories.find_one({"name": cat_name}) is None:
-            db.categories.insert_one({"name": cat_name})
-            print(f"Created default category: {cat_name}")
+    try:
+        # It's good practice to ensure the collection exists before inserting.
+        if "categories" not in db.list_collection_names():
+            print("Creating 'categories' collection...")
+        
+        for cat_name in default_categories:
+            if db.categories.find_one({"name": cat_name}) is None:
+                db.categories.insert_one({"name": cat_name})
+                print(f"Created default category: {cat_name}")
+    except Exception as e:
+        print(f"Error creating default categories: {e}")
 
+# --- 4. Run startup tasks within application context ---
+# This block executes once when the application is loaded by Gunicorn.
 with app.app_context():
     _create_default_categories()
 
-# --- Routes ---
+
+# --- 5. Application Routes ---
+
 @app.route('/')
 def home():
-    # Render the new landing page
+    """Renders the landing page."""
     return render_template('landing.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """Handles user login."""
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -77,6 +98,7 @@ def login():
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    """Handles user registration."""
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -94,26 +116,27 @@ def signup():
 
 @app.route('/dashboard')
 def dashboard():
+    """Renders the user dashboard, showing uploaded files."""
     if 'user_email' not in session:
         flash('Please log in to view this page.', 'info')
         return redirect(url_for('login'))
     
     user_email = session['user_email']
     categories = list(db.categories.find())
-    
-    # Fetch only the files uploaded by the current user
     user_files = list(db.files.find({"user_email": user_email}))
     
     return render_template('dashboard.html', categories=categories, user_files=user_files)
 
 @app.route('/logout')
 def logout():
+    """Logs the user out."""
     session.pop('user_email', None)
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
 
 @app.route('/upload_file', methods=['POST'])
 def upload_file():
+    """Handles file uploads to S3 and database entry."""
     if 'user_email' not in session:
         flash('Please log in to upload files.', 'info')
         return redirect(url_for('login'))
@@ -179,9 +202,9 @@ def upload_file():
 
     flash("File uploaded successfully!", 'success')
     return redirect(url_for('dashboard'))
-    
-    if __name__ == '__main__':
+
+
+if __name__ == '__main__':
     # This block is for local development only.
     # In production, a WSGI server like Gunicorn will manage the app.
-    # app.run(debug=True)
     pass
